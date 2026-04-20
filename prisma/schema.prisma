@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BlogPost {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    
+  excerpt         String?
+  content         String?
+  featuredImage   String?
+  author          String
+  publishDate     DateTime?
+  isPublished     Boolean   @default(false)
+  metaTitle       String?
+  metaDescription String?
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now())
+}
+
+model Category {
+  id          Int           @id @default(autoincrement())
+  name        String
+  slug        String        
+  description String?
+  imageUrl    String?
+  bannerUrl   String?
+  isActive    Boolean       @default(true)
+  isDeleted   Boolean       @default(false)
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now())
+  Product     Product[]
+  SubCategory SubCategory[]
+}
+
+model Lead {
+  id          Int         @id @default(autoincrement())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  message     String?
+  sourcePage  String?
+  inquiryType InquiryType @default(general)
+  status      LeadStatus  @default(new)
+  isDeleted   Boolean     @default(false)
+  deletedAt   DateTime?
+  productId   Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now())
+  Product     Product?    @relation(fields: [productId], references: [id])
+}
+
+model Product {
+  id               Int          @id @default(autoincrement())
+  name             String
+  slug             String      
+  shortDescription String?
+  fullDescription  String?
+  specifications   Json?
+  galleryImages    Json?
+  isFeatured       Boolean      @default(false)
+  isActive         Boolean      @default(true)
+  isDeleted        Boolean      @default(false)
+  deletedAt        DateTime?
+  categoryId       Int?
+  subcategoryId    Int?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @default(now())
+  Lead             Lead[]
+  Category         Category?    @relation(fields: [categoryId], references: [id])
+  SubCategory      SubCategory? @relation(fields: [subcategoryId], references: [id])
+}
+
+model SubCategory {
+  id           Int       @id @default(autoincrement())
+  name         String
+  slug         String    
+  description  String?
+  imageUrl     String?
+  bannerUrl    String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+  categoryId   Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
+  Product      Product[]
+  Category     Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  name           String
+  role           Role      @default(user)
+  isDeleted      Boolean   @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now())
+  resetOtp       String?
+  resetOtpExpiry DateTime? @db.Timestamp(6)
+}
+
+enum InquiryType {
+  general
+  product
+  support
+  partnership
+  General_Inquiry
+  Request_for_Quote
+  Technical_Support
+  Product_Information
+  Other
+  product_inquiry
+}
+
+enum LeadStatus {
+  new
+  contacted
+  qualified
+  closed
+}
+
+enum Role {
+  admin
+  user
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  name          String
+  email         String
+  phone         String?
+  company       String?
+  preferredDate DateTime?
+  preferredTime String?
+  topic         String?
+  message       String?
+  status        BookingStatus @default(pending)
+  isDeleted     Boolean       @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
