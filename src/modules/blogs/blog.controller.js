@@ -10,8 +10,8 @@ import {
 } from "./blog.service.js";
 
 import {
-  uploadImageToSupabase,
-  deleteImageFromSupabase,
+  uploadFileToSupabase,
+  deleteFileFromSupabase,
 } from "../../utils/supabaseStorage.js";
 import prisma from "../../config/prisma.js";
 
@@ -40,8 +40,12 @@ export const getBlogPostBySlug = async (req, res) => {
 
 export const getAllBlogPostsAdmin = async (req, res) => {
   try {
-    const posts = await getAllBlogsAdmin();
-    res.json(posts);
+    const { page = 1, limit = 10 } = req.query;
+    const results = await getAllBlogsAdmin({
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+    res.json(results);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -65,7 +69,7 @@ export const createBlogPost = async (req, res) => {
   let imageUrl = null;
   try {
     if (req.file) {
-      imageUrl = await uploadImageToSupabase(req.file, "blogs");
+      imageUrl = await uploadFileToSupabase(req.file, "blogs");
     }
 
     const postData = {
@@ -93,7 +97,7 @@ export const createBlogPost = async (req, res) => {
   } catch (error) {
     if (imageUrl) {
       try {
-        await deleteImageFromSupabase(imageUrl);
+        await deleteFileFromSupabase(imageUrl);
       } catch (deleteError) {
         console.error("Failed to delete uploaded image:", deleteError);
       }
@@ -131,7 +135,7 @@ export const updateBlogPost = async (req, res) => {
 
       oldImageUrl = existingPost.featuredImage;
 
-      imageUrl = await uploadImageToSupabase(req.file, "blogs");
+      imageUrl = await uploadFileToSupabase(req.file, "blogs");
     }
 
     const updateData = {
@@ -155,7 +159,7 @@ export const updateBlogPost = async (req, res) => {
 
     if (oldImageUrl && imageUrl) {
       try {
-        await deleteImageFromSupabase(oldImageUrl);
+        await deleteFileFromSupabase(oldImageUrl);
       } catch (deleteError) {
         console.error("Failed to delete old image:", deleteError);
       }
@@ -169,7 +173,7 @@ export const updateBlogPost = async (req, res) => {
   } catch (error) {
     if (imageUrl) {
       try {
-        await deleteImageFromSupabase(imageUrl);
+        await deleteFileFromSupabase(imageUrl);
       } catch (deleteError) {
         console.error("Failed to delete uploaded image:", deleteError);
       }

@@ -13,18 +13,37 @@ export const createBooking = async (bookingData) => {
   }
 };
 
-export const getBookings = async () => {
+export const getBookings = async ({ page, limit }) => {
   try {
-    const bookings = await prisma.booking.findMany({
-      where: {
-        isDeleted: false,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const skip = (page - 1) * limit;
 
-    return bookings;
+    const [bookings, count] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          isDeleted: false,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.booking.count({
+        where: {
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    return {
+      data: bookings,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   } catch (error) {
     throwError("Failed to fetch bookings", 500);
   }

@@ -1,6 +1,6 @@
 import supabase from "../config/supabase.js";
 
-export const uploadImageToSupabase = async (file, folder = "general") => {
+export const uploadFileToSupabase = async (file, folder = "general") => {
   try {
     const fileName = `${folder}/${Date.now()}-${file.originalname}`;
     const { error } = await supabase.storage
@@ -19,7 +19,7 @@ export const uploadImageToSupabase = async (file, folder = "general") => {
   }
 };
 
-export const deleteImageFromSupabase = async (imageUrl) => {
+export const deleteFileFromSupabase = async (imageUrl) => {
   if (!imageUrl) return;
 
   try {

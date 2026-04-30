@@ -25,7 +25,11 @@ export const createBookingController = async (req, res) => {
 
 export const getBookingsController = async (req, res) => {
   try {
-    const bookings = await getBookings();
+    const { page = 1, limit = 10 } = req.query;
+    const bookings = await getBookings({
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
     res.json({
       success: true,
       data: bookings,

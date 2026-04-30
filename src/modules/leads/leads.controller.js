@@ -8,11 +8,15 @@ import {
 
 export const getLeadsController = async (req, res) => {
   try {
-    const leads = await getAllLeads();
+    const { page = 1, limit = 10 } = req.query;
+    const results = await getAllLeads({
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
 
     res.status(200).json({
       success: true,
-      data: leads,
+      ...results,
     });
   } catch (error) {
     res.status(error.status || 500).json({
@@ -40,7 +44,6 @@ export const getLeadByIdController = async (req, res) => {
 
 export const createLeadController = async (req, res) => {
   try {
-    console.log(req.body, "showing body");
     const payload = {
       name: req.body.name,
       email: req.body.email,
@@ -61,7 +64,6 @@ export const createLeadController = async (req, res) => {
       data: created,
     });
   } catch (error) {
-    console.log(error, "showing error");
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Failed to create lead",

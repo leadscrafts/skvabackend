@@ -33,19 +33,41 @@ export const getAllSubCategories = async () => {
   }
 };
 
-export const getAllSubCategoriesAdmin = async () => {
+export const getAllSubCategoriesAdmin = async ({ page = 1, limit = 10 }) => {
   try {
-    return await prisma.subCategory.findMany({
-      where: {
-        isDeleted: false,
+    const skip = (page - 1) * limit;
+    const [subCategories, count] = await Promise.all([
+      prisma.subCategory.findMany({
+        where: {
+          isDeleted: false,
+        },
+        include: {
+          Category: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.subCategory.count({
+        where: {
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    return {
+      data: {
+        data: subCategories,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          totalPages: Math.ceil(count / limit),
+        },
       },
-      include: {
-        Category: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    };
   } catch (error) {
     throwError("Failed to fetch subCategories", 500);
   }

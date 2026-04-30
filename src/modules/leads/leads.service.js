@@ -38,22 +38,44 @@ const validateProduct = async (productId) => {
   return product;
 };
 
-export const getAllLeads = async () => {
+export const getAllLeads = async ({ page = 1, limit = 10 }) => {
   try {
-    return await prisma.lead.findMany({
-      where: { isDeleted: false },
-      include: {
-        Product: {
-          include: {
-            Category: true,
-            SubCategory: true,
+    const skip = (page - 1) * limit;
+    const [leads, count] = await Promise.all([
+      prisma.lead.findMany({
+        where: { isDeleted: false },
+        include: {
+          Product: {
+            include: {
+              Category: true,
+              SubCategory: true,
+            },
           },
         },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.lead.count({
+        where: {
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    return {
+      data: {
+        data: leads,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          totalPages: Math.ceil(count / limit),
+        },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    };
   } catch (error) {
     throwError("Failed to fetch leads", 500);
   }

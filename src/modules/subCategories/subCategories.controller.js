@@ -10,8 +10,8 @@ import {
   updateSubCategoryActive,
 } from "./subCategories.service.js";
 import {
-  deleteImageFromSupabase,
-  uploadImageToSupabase,
+  deleteFileFromSupabase,
+  uploadFileToSupabase,
 } from "../../utils/supabaseStorage.js";
 
 const parseBoolean = (value) => {
@@ -38,11 +38,15 @@ export const getSubCategoriesController = async (req, res) => {
 
 export const getSubCategoriesAdminController = async (req, res) => {
   try {
-    const subCategories = await getAllSubCategoriesAdmin();
+    const { page = 1, limit = 10 } = req.query;
+    const results = await getAllSubCategoriesAdmin({
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
 
     res.status(200).json({
       success: true,
-      data: subCategories,
+      ...results,
     });
   } catch (error) {
     res.status(error.status || 500).json({
@@ -90,14 +94,14 @@ export const createSubCategoryController = async (req, res) => {
 
   try {
     if (req.files?.imageUrl?.[0]) {
-      uploadedImageUrl = await uploadImageToSupabase(
+      uploadedImageUrl = await uploadFileToSupabase(
         req.files.imageUrl[0],
         "subcategories",
       );
     }
 
     if (req.files?.bannerUrl?.[0]) {
-      uploadedBannerUrl = await uploadImageToSupabase(
+      uploadedBannerUrl = await uploadFileToSupabase(
         req.files.bannerUrl[0],
         "subcategories",
       );
@@ -128,11 +132,11 @@ export const createSubCategoryController = async (req, res) => {
     });
   } catch (error) {
     if (uploadedImageUrl) {
-      await deleteImageFromSupabase(uploadedImageUrl);
+      await deleteFileFromSupabase(uploadedImageUrl);
     }
 
     if (uploadedBannerUrl) {
-      await deleteImageFromSupabase(uploadedBannerUrl);
+      await deleteFileFromSupabase(uploadedBannerUrl);
     }
 
     res.status(error.status || 500).json({
@@ -165,14 +169,14 @@ export const updateSubCategoryController = async (req, res) => {
     oldBannerUrl = existing.bannerUrl;
 
     if (req.files?.imageUrl?.[0]) {
-      uploadedImageUrl = await uploadImageToSupabase(
+      uploadedImageUrl = await uploadFileToSupabase(
         req.files.imageUrl[0],
         "subcategories",
       );
     }
 
     if (req.files?.bannerUrl?.[0]) {
-      uploadedBannerUrl = await uploadImageToSupabase(
+      uploadedBannerUrl = await uploadFileToSupabase(
         req.files.bannerUrl[0],
         "subcategories",
       );
@@ -200,11 +204,11 @@ export const updateSubCategoryController = async (req, res) => {
     const updated = await updateSubCategory(id, updateData);
 
     if (uploadedImageUrl && oldImageUrl) {
-      await deleteImageFromSupabase(oldImageUrl);
+      await deleteFileFromSupabase(oldImageUrl);
     }
 
     if (uploadedBannerUrl && oldBannerUrl) {
-      await deleteImageFromSupabase(oldBannerUrl);
+      await deleteFileFromSupabase(oldBannerUrl);
     }
 
     res.status(200).json({
@@ -214,11 +218,11 @@ export const updateSubCategoryController = async (req, res) => {
     });
   } catch (error) {
     if (uploadedImageUrl) {
-      await deleteImageFromSupabase(uploadedImageUrl);
+      await deleteFileFromSupabase(uploadedImageUrl);
     }
 
     if (uploadedBannerUrl) {
-      await deleteImageFromSupabase(uploadedBannerUrl);
+      await deleteFileFromSupabase(uploadedBannerUrl);
     }
 
     res.status(error.status || 500).json({
@@ -246,11 +250,11 @@ export const deleteSubCategoryController = async (req, res) => {
     await softDeleteSubCategory(id);
 
     if (existing.imageUrl) {
-      await deleteImageFromSupabase(existing.imageUrl);
+      await deleteFileFromSupabase(existing.imageUrl);
     }
 
     if (existing.bannerUrl) {
-      await deleteImageFromSupabase(existing.bannerUrl);
+      await deleteFileFromSupabase(existing.bannerUrl);
     }
 
     res.status(200).json({

@@ -1,5 +1,5 @@
 import express from "express";
-import upload from "../../middleware/uploadMiddleware.js";
+import upload, { brochureUpload } from "../../middleware/uploadMiddleware.js";
 import {
   adminAuth,
   authenticateToken,
@@ -7,19 +7,27 @@ import {
 import {
   createProductController,
   deleteProductController,
+  getBrochureController,
   getProductByIdController,
   getProductBySlugController,
   getProductsAdminController,
   getProductsController,
+  removeBrochureController,
   updateProductActiveController,
   updateProductController,
   updateProductFeaturedController,
+  uploadBrochureController,
 } from "./products.controller.js";
 
 const router = express.Router();
 
 router.get("/admin", authenticateToken, adminAuth, getProductsAdminController);
-router.get("/admin/:id", authenticateToken, adminAuth, getProductByIdController);
+router.get(
+  "/admin/:id",
+  authenticateToken,
+  adminAuth,
+  getProductByIdController,
+);
 
 router.post(
   "/",
@@ -52,6 +60,23 @@ router.patch(
 );
 
 router.delete("/:id", authenticateToken, adminAuth, deleteProductController);
+
+router.get("/:id/brochure", getBrochureController);
+
+router.post(
+  "/:id/brochure",
+  authenticateToken,
+  adminAuth,
+  brochureUpload.single("brochure"),
+  uploadBrochureController,
+);
+
+router.delete(
+  "/:id/brochure",
+  authenticateToken,
+  adminAuth,
+  removeBrochureController,
+);
 
 router.get("/", getProductsController);
 router.get("/:slug", getProductBySlugController);

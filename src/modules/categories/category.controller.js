@@ -9,8 +9,8 @@ import {
 } from "./category.service.js";
 import prisma from "../../config/prisma.js";
 import {
-  uploadImageToSupabase,
-  deleteImageFromSupabase,
+  uploadFileToSupabase,
+  deleteFileFromSupabase,
 } from "../../utils/supabaseStorage.js";
 
 const parseBoolean = (value) => {
@@ -37,11 +37,15 @@ export const getCategories = async (req, res) => {
 
 export const getCategoriesAdmin = async (req, res) => {
   try {
-    const categories = await getAllCategoriesAdmin();
+    const { page = 1, limit = 10 } = req.query;
+    const result = await getAllCategoriesAdmin({
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
 
     res.status(200).json({
       success: true,
-      data: categories,
+      ...result,
     });
   } catch (error) {
     res.status(error.status || 500).json({
@@ -89,14 +93,14 @@ export const createCategoryController = async (req, res) => {
 
   try {
     if (req.files?.imageUrl?.[0]) {
-      uploadedImageUrl = await uploadImageToSupabase(
+      uploadedImageUrl = await uploadFileToSupabase(
         req.files.imageUrl[0],
         "categories",
       );
     }
 
     if (req.files?.bannerUrl?.[0]) {
-      uploadedBannerUrl = await uploadImageToSupabase(
+      uploadedBannerUrl = await uploadFileToSupabase(
         req.files.bannerUrl[0],
         "categories",
       );
@@ -122,11 +126,11 @@ export const createCategoryController = async (req, res) => {
     });
   } catch (error) {
     if (uploadedImageUrl) {
-      await deleteImageFromSupabase(uploadedImageUrl);
+      await deleteFileFromSupabase(uploadedImageUrl);
     }
 
     if (uploadedBannerUrl) {
-      await deleteImageFromSupabase(uploadedBannerUrl);
+      await deleteFileFromSupabase(uploadedBannerUrl);
     }
 
     res.status(error.status || 500).json({
@@ -159,14 +163,14 @@ export const updateCategoryController = async (req, res) => {
     oldBannerUrl = existing.bannerUrl;
 
     if (req.files?.imageUrl?.[0]) {
-      uploadedImageUrl = await uploadImageToSupabase(
+      uploadedImageUrl = await uploadFileToSupabase(
         req.files.imageUrl[0],
         "categories",
       );
     }
 
     if (req.files?.bannerUrl?.[0]) {
-      uploadedBannerUrl = await uploadImageToSupabase(
+      uploadedBannerUrl = await uploadFileToSupabase(
         req.files.bannerUrl[0],
         "categories",
       );
@@ -188,11 +192,11 @@ export const updateCategoryController = async (req, res) => {
     const updated = await updateCategory(id, updateData);
 
     if (uploadedImageUrl && oldImageUrl) {
-      await deleteImageFromSupabase(oldImageUrl);
+      await deleteFileFromSupabase(oldImageUrl);
     }
 
     if (uploadedBannerUrl && oldBannerUrl) {
-      await deleteImageFromSupabase(oldBannerUrl);
+      await deleteFileFromSupabase(oldBannerUrl);
     }
 
     res.status(200).json({
@@ -202,11 +206,11 @@ export const updateCategoryController = async (req, res) => {
     });
   } catch (error) {
     if (uploadedImageUrl) {
-      await deleteImageFromSupabase(uploadedImageUrl);
+      await deleteFileFromSupabase(uploadedImageUrl);
     }
 
     if (uploadedBannerUrl) {
-      await deleteImageFromSupabase(uploadedBannerUrl);
+      await deleteFileFromSupabase(uploadedBannerUrl);
     }
 
     res.status(error.status || 500).json({
@@ -234,11 +238,11 @@ export const deleteCategoryController = async (req, res) => {
     await softDeleteCategory(id);
 
     if (existing.imageUrl) {
-      await deleteImageFromSupabase(existing.imageUrl);
+      await deleteFileFromSupabase(existing.imageUrl);
     }
 
     if (existing.bannerUrl) {
-      await deleteImageFromSupabase(existing.bannerUrl);
+      await deleteFileFromSupabase(existing.bannerUrl);
     }
 
     res.status(200).json({

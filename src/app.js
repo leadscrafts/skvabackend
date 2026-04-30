@@ -9,6 +9,9 @@ import subCategoryRoutes from "./modules/subCategories/subCategories.routes.js";
 import productRoutes from "./modules/products/products.routes.js";
 import leadRoutes from "./modules/leads/leads.routes.js";
 import bookingRoutes from "./modules/booking/booking.routes.js";
+import homeBannerRoutes from "./modules/homeBanner/homeBanner.routes.js";
+import homeVideoRoutes from "./modules/homeVideo/homeVideo.routes.js";
+import mediaGalleryRoutes from "./modules/mediaGallery/mediaGallery.routes.js";
 
 const app = express();
 const PORT = env.port;
@@ -50,6 +53,9 @@ app.use("/uploads", express.static("uploads"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api/banners", homeBannerRoutes);
+app.use("/api/home-video", homeVideoRoutes);
+app.use("/api/media-gallery", mediaGalleryRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/sub-categories", subCategoryRoutes);
 app.use("/api/products", productRoutes);

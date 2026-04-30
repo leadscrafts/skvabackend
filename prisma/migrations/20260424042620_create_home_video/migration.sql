@@ -1,0 +1,10 @@
+-- CreateTable
+CREATE TABLE "HomeVideo" (
+    "id" INTEGER NOT NULL DEFAULT 1,
+    "videoUrl" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "HomeVideo_pkey" PRIMARY KEY ("id")
+);

@@ -66,20 +66,50 @@ export const getAllProducts = async () => {
   }
 };
 
-export const getAllProductsAdmin = async () => {
+export const getAllProductsAdmin = async ({
+  page = 1,
+  limit = 10,
+  categoryId,
+}) => {
   try {
-    return await prisma.product.findMany({
-      where: {
-        isDeleted: false,
+    const skip = (page - 1) * limit;
+
+    const where = {
+      isDeleted: false,
+    };
+
+    const parsedCategoryId = Number(categoryId);
+    if (Number.isInteger(parsedCategoryId) && parsedCategoryId > 0) {
+      where.categoryId = parsedCategoryId;
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          Category: true,
+          SubCategory: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return {
+      data: {
+        data: products,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
       },
-      include: {
-        Category: true,
-        SubCategory: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    };
   } catch (error) {
     throwError("Failed to fetch products", 500);
   }
@@ -215,11 +245,14 @@ export const createProduct = async (data) => {
   if (!slug) throwError("Slug is required", 400);
 
   try {
-    const existing = await prisma.product.findUnique({
-      where: { slug },
+    const existing = await prisma.product.findFirst({
+      where: {
+        slug,
+        isDeleted: false,
+      },
     });
 
-    if (existing && !existing.isDeleted) {
+    if (existing) {
       throwError("Slug already exists", 409);
     }
 
@@ -236,6 +269,8 @@ export const createProduct = async (data) => {
         slug,
         categoryId,
         subcategoryId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       include: {
         Category: true,
@@ -414,5 +449,95 @@ export const updateProductFeatured = async (id, isFeatured) => {
   } catch (error) {
     if (error.status) throw error;
     throwError("Failed to update product featured status", 500);
+  }
+};
+
+export const uploadBrochureService = async (productId, brochureUrl) => {
+  if (!productId) {
+    throwError("Product ID is required", 400);
+  }
+
+  if (!brochureUrl) {
+    throwError("Brochure URL is required", 400);
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: {
+        id: Number(productId),
+      },
+    });
+
+    if (!product || product.isDeleted) {
+      throwError("Product not found", 404);
+    }
+
+    return await prisma.product.update({
+      where: {
+        id: Number(productId),
+      },
+      data: {
+        brochureUrl,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    if (error.status) throw error;
+    throwError("Failed to upload brochure", 500);
+  }
+};
+
+export const removeBrochureService = async (productId) => {
+  if (!productId) {
+    throwError("Product ID is required", 400);
+  }
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: Number(productId) },
+    });
+
+    if (!product || product.isDeleted) {
+      throwError("Product not found", 404);
+    }
+
+    return await prisma.product.update({
+      where: {
+        id: Number(productId),
+      },
+      data: {
+        brochureUrl: null,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    if (error.status) throw error;
+    throwError("Failed to delete brochure", 500);
+  }
+};
+
+export const getBrochureService = async (productId) => {
+  if (!productId) {
+    throwError("Product ID is required", 400);
+  }
+
+  try {
+    const product = await prisma.product.findFirst({
+      where: {
+        id: Number(productId),
+        isDeleted: false,
+      },
+      select: {
+        brochureUrl: true,
+      },
+    });
+
+    if (!product) {
+      throwError("Product not found", 404);
+    }
+
+    return product;
+  } catch (error) {
+    if (error.status) throw error;
+    throwError("Failed to get brochure", 500);
   }
 };

@@ -20,16 +20,39 @@ export const getAllCategories = async () => {
   }
 };
 
-export const getAllCategoriesAdmin = async () => {
+export const getAllCategoriesAdmin = async ({ page = 1, limit = 10 }) => {
   try {
-    const categories = await prisma.category.findMany({
-      where: {
-        isDeleted: false,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const skip = (page - 1) * limit;
 
-    return categories;
+    const [categories, count] = await Promise.all([
+      prisma.category.findMany({
+        where: {
+          isDeleted: false,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.category.count({
+        where: {
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    return {
+      data: {
+        data: categories,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          totalPages: Math.ceil(count / limit),
+        },
+      },
+    };
   } catch (error) {
     throwError("Failed to fetch category", 500);
   }

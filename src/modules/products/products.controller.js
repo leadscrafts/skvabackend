@@ -6,14 +6,17 @@ import {
   getFilteredProducts,
   getProductById,
   getProductBySlug,
+  getBrochureService,
+  removeBrochureService,
   softDeleteProduct,
   updateProduct,
   updateProductActive,
   updateProductFeatured,
+  uploadBrochureService,
 } from "./products.service.js";
 import {
-  deleteImageFromSupabase,
-  uploadImageToSupabase,
+  deleteFileFromSupabase,
+  uploadFileToSupabase,
 } from "../../utils/supabaseStorage.js";
 
 const parseBoolean = (value) => {
@@ -40,18 +43,28 @@ const parseJson = (value, fieldName) => {
   return value;
 };
 
-const getGalleryUrls = (galleryImages) => {
-  if (!galleryImages) return [];
-  if (Array.isArray(galleryImages)) {
-    return galleryImages.filter((item) => typeof item === "string");
+export const getGalleryUrls = (gallery) => {
+  if (!gallery) return [];
+
+  let parsed = gallery;
+
+  if (typeof gallery === "string") {
+    try {
+      parsed = JSON.parse(gallery);
+    } catch {
+      return [];
+    }
   }
-  return [];
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed.filter((url) => typeof url === "string" && url.trim() !== "");
 };
 
 const getUploadedGalleryUrls = async (files = []) => {
   const urls = [];
   for (const file of files) {
-    const url = await uploadImageToSupabase(file, "products");
+    const url = await uploadFileToSupabase(file, "products");
     urls.push(url);
   }
   return urls;
@@ -83,11 +96,17 @@ export const getProductsController = async (req, res) => {
 
 export const getProductsAdminController = async (req, res) => {
   try {
-    const products = await getAllProductsAdmin();
+    const { page = 1, limit = 10, categoryId } = req.query;
+
+    const result = await getAllProductsAdmin({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      categoryId: parseInt(categoryId),
+    });
 
     res.status(200).json({
       success: true,
-      data: products,
+      ...result,
     });
   } catch (error) {
     res.status(error.status || 500).json({
@@ -135,9 +154,22 @@ export const createProductController = async (req, res) => {
   try {
     uploadedGalleryUrls = await getUploadedGalleryUrls(req.files || []);
 
+    uploadedGalleryUrls = uploadedGalleryUrls.filter(
+      (url) => typeof url === "string" && url.trim() !== "",
+    );
+
     const bodyGallery = parseJson(req.body.galleryImages, "galleryImages");
-    const bodyGalleryUrls = getGalleryUrls(bodyGallery);
-    const mergedGalleryImages = [...bodyGalleryUrls, ...uploadedGalleryUrls];
+
+    let bodyGalleryUrls = getGalleryUrls(bodyGallery);
+
+    bodyGalleryUrls = bodyGalleryUrls.filter(
+      (url) => typeof url === "string" && url.trim() !== "",
+    );
+
+    const mergedGalleryImages = [
+      ...bodyGalleryUrls,
+      ...uploadedGalleryUrls,
+    ].filter((url) => typeof url === "string" && url.trim() !== "");
 
     const payload = {
       name: req.body.name,
@@ -145,6 +177,7 @@ export const createProductController = async (req, res) => {
       shortDescription: req.body.shortDescription || null,
       fullDescription: req.body.fullDescription || null,
       specifications: parseJson(req.body.specifications, "specifications"),
+      videoUrl: req.body.videoUrl || null,
       galleryImages:
         mergedGalleryImages.length > 0 ? mergedGalleryImages : null,
       categoryId: req.body.categoryId,
@@ -167,7 +200,11 @@ export const createProductController = async (req, res) => {
     });
   } catch (error) {
     for (const url of uploadedGalleryUrls) {
-      await deleteImageFromSupabase(url);
+      try {
+        await deleteFileFromSupabase(url);
+      } catch (err) {
+        console.error("Rollback delete failed:", url);
+      }
     }
 
     res.status(error.status || 500).json({
@@ -176,15 +213,15 @@ export const createProductController = async (req, res) => {
     });
   }
 };
-
 export const updateProductController = async (req, res) => {
   const id = Number(req.params.id);
+
   let oldGalleryUrls = [];
   let uploadedGalleryUrls = [];
 
   try {
     const existing = await prisma.product.findUnique({
-      where: { id: Number(id) },
+      where: { id },
     });
 
     if (!existing || existing.isDeleted) {
@@ -197,6 +234,10 @@ export const updateProductController = async (req, res) => {
     oldGalleryUrls = getGalleryUrls(existing.galleryImages);
     uploadedGalleryUrls = await getUploadedGalleryUrls(req.files || []);
 
+    uploadedGalleryUrls = uploadedGalleryUrls.filter(
+      (url) => typeof url === "string" && url.trim() !== "",
+    );
+
     const updateData = {
       ...(req.body.name !== undefined && { name: req.body.name }),
       ...(req.body.slug !== undefined && { slug: req.body.slug }),
@@ -208,6 +249,9 @@ export const updateProductController = async (req, res) => {
       }),
       ...(req.body.specifications !== undefined && {
         specifications: parseJson(req.body.specifications, "specifications"),
+      }),
+      ...(req.body.videoUrl !== undefined && {
+        videoUrl: req.body.videoUrl || null,
       }),
       ...(req.body.categoryId !== undefined && {
         categoryId: req.body.categoryId,
@@ -227,9 +271,19 @@ export const updateProductController = async (req, res) => {
       req.body.galleryImages !== undefined ||
       uploadedGalleryUrls.length > 0
     ) {
-      const bodyGallery = parseJson(req.body.galleryImages, "galleryImages");
-      const bodyGalleryUrls = getGalleryUrls(bodyGallery);
-      const mergedGalleryImages = [...bodyGalleryUrls, ...uploadedGalleryUrls];
+      let bodyGallery = parseJson(req.body.galleryImages, "galleryImages");
+
+      let bodyGalleryUrls = getGalleryUrls(bodyGallery);
+
+      bodyGalleryUrls = bodyGalleryUrls.filter(
+        (url) => typeof url === "string" && url.trim() !== "",
+      );
+
+      const mergedGalleryImages = [
+        ...bodyGalleryUrls,
+        ...uploadedGalleryUrls,
+      ].filter((url) => typeof url === "string" && url.trim() !== "");
+
       updateData.galleryImages =
         mergedGalleryImages.length > 0 ? mergedGalleryImages : null;
     }
@@ -237,12 +291,20 @@ export const updateProductController = async (req, res) => {
     const updated = await updateProduct(id, updateData);
 
     const updatedGalleryUrls = getGalleryUrls(updated.galleryImages);
+
     const removedUrls = oldGalleryUrls.filter(
-      (url) => !updatedGalleryUrls.includes(url),
+      (url) =>
+        typeof url === "string" &&
+        url.trim() !== "" &&
+        !updatedGalleryUrls.includes(url),
     );
 
     for (const url of removedUrls) {
-      await deleteImageFromSupabase(url);
+      try {
+        await deleteImageFromSupabase(url);
+      } catch (err) {
+        console.error("Failed to delete image:", url, err.message);
+      }
     }
 
     res.status(200).json({
@@ -252,7 +314,11 @@ export const updateProductController = async (req, res) => {
     });
   } catch (error) {
     for (const url of uploadedGalleryUrls) {
-      await deleteImageFromSupabase(url);
+      try {
+        await deleteImageFromSupabase(url);
+      } catch (err) {
+        console.error("Rollback delete failed:", url);
+      }
     }
 
     res.status(error.status || 500).json({
@@ -281,7 +347,7 @@ export const deleteProductController = async (req, res) => {
 
     const galleryUrls = getGalleryUrls(existing.galleryImages);
     for (const url of galleryUrls) {
-      await deleteImageFromSupabase(url);
+      await deleteFileFromSupabase(url);
     }
 
     res.status(200).json({
@@ -342,6 +408,110 @@ export const updateProductFeaturedController = async (req, res) => {
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Failed to update product featured status",
+    });
+  }
+};
+
+export const uploadBrochureController = async (req, res) => {
+  let uploadedUrl = null;
+
+  try {
+    const id = Number(req.params.id);
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      select: { brochureUrl: true, isDeleted: true },
+    });
+
+    if (!existing || existing.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    let brochureUrl = req.body.brochureUrl || null;
+
+    if (req.file) {
+      uploadedUrl = await uploadFileToSupabase(req.file, "products/brochures");
+      brochureUrl = uploadedUrl;
+    }
+
+    if (!brochureUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Brochure file or brochureUrl is required",
+      });
+    }
+
+    const updated = await uploadBrochureService(id, brochureUrl);
+
+    if (uploadedUrl && existing.brochureUrl) {
+      await deleteFileFromSupabase(existing.brochureUrl);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Brochure uploaded successfully",
+      data: updated,
+    });
+  } catch (error) {
+    if (uploadedUrl) {
+      await deleteFileFromSupabase(uploadedUrl);
+    }
+
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Failed to upload brochure",
+    });
+  }
+};
+
+export const removeBrochureController = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      select: { brochureUrl: true, isDeleted: true },
+    });
+
+    if (!existing || existing.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const updated = await removeBrochureService(id);
+
+    if (existing.brochureUrl) {
+      await deleteFileFromSupabase(existing.brochureUrl);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Brochure removed successfully",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Failed to remove brochure",
+    });
+  }
+};
+
+export const getBrochureController = async (req, res) => {
+  try {
+    const brochure = await getBrochureService(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: brochure,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Failed to fetch brochure",
     });
   }
 };

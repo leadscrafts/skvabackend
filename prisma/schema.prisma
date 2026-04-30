@@ -66,6 +66,7 @@ model Product {
   shortDescription String?
   fullDescription  String?
   specifications   Json?
+  videoUrl         String?
   galleryImages    Json?
   isFeatured       Boolean      @default(false)
   isActive         Boolean      @default(true)
@@ -76,6 +77,7 @@ model Product {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @default(now())
   Lead             Lead[]
+  brochureUrl      String?
   Category         Category?    @relation(fields: [categoryId], references: [id])
   SubCategory      SubCategory? @relation(fields: [subcategoryId], references: [id])
 }
@@ -159,4 +161,42 @@ model Booking {
   deletedAt     DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+model HomeBanner {
+  id            Int           @id @default(autoincrement())
+  imageUrl      String
+  title         String?   
+  highlight     String?   
+  description   String?   
+  isActive      Boolean       @default(true)
+  isDeleted     Boolean       @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now())
+}
+
+model HomeVideo {
+  id            Int           @id @default(1)
+  videoUrl      String      
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now())
+}
+
+model MediaGallery {
+  id            Int           @id @default(autoincrement())
+  type          MediaType
+  url           String
+  title         String?
+  isActive      Boolean       @default(true)
+  isDeleted     Boolean       @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now())
+}
+
+enum MediaType {
+  image
+  video
 }

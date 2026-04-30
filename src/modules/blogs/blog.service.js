@@ -38,12 +38,33 @@ export const getBlogBySlug = async (slug) => {
   }
 };
 
-export const getAllBlogsAdmin = async () => {
+export const getAllBlogsAdmin = async ({ page = 1, limit = 10 }) => {
   try {
-    return await prisma.blogPost.findMany({
-      where: { isDeleted: false },
-      orderBy: { createdAt: "desc" },
-    });
+    const skip = (page - 1) * limit;
+
+    const [posts, count] = await Promise.all([
+      prisma.blogPost.findMany({
+        where: { isDeleted: false },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.blogPost.count({
+        where: {
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    return {
+      data: posts,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   } catch (error) {
     throwError("Failed to fetch blogs", 500);
   }
