@@ -166,6 +166,8 @@ model Booking {
 model HomeBanner {
   id            Int           @id @default(autoincrement())
   imageUrl      String
+  mobileImageUrl String?
+  redirectLink  String?
   title         String?   
   highlight     String?   
   description   String?   

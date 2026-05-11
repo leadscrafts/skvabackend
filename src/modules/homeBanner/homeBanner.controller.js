@@ -60,6 +60,7 @@ export const getBannerDetailsById = async (req, res) => {
 
 export const createBannerController = async (req, res) => {
   let uploadedImageUrl = null;
+  let uploadedMobileImageUrl = null;
 
   try {
     if (req.files?.imageUrl?.[0]) {
@@ -69,10 +70,20 @@ export const createBannerController = async (req, res) => {
       );
     }
 
+    if (req.files?.mobileImageUrl?.[0]) {
+      uploadedMobileImageUrl = await uploadFileToSupabase(
+        req.files.mobileImageUrl[0],
+        "banners",
+      );
+    }
+
     const isActive = parseBoolean(req.body.isActive);
 
     const payload = {
       imageUrl: uploadedImageUrl,
+      mobileImageUrl: uploadedMobileImageUrl,
+      redirectLink: req.body.redirectLink || null,
+
       title: req.body.title || null,
       highlight: req.body.highlight || null,
       description: req.body.description || null,
@@ -91,6 +102,9 @@ export const createBannerController = async (req, res) => {
     if (uploadedImageUrl) {
       await deleteFileFromSupabase(uploadedImageUrl);
     }
+    if (uploadedMobileImageUrl) {
+      await deleteFileFromSupabase(uploadedMobileImageUrl);
+    }
 
     res.status(error.status || 500).json({
       success: false,
@@ -101,8 +115,12 @@ export const createBannerController = async (req, res) => {
 
 export const updateBannerController = async (req, res) => {
   const id = Number(req.params.id);
+
   let uploadedImageUrl = null;
+  let uploadedMobileImageUrl = null;
+
   let oldImageUrl = null;
+  let oldMobileImageUrl = null;
 
   try {
     const existing = await prisma.homeBanner.findUnique({
@@ -117,6 +135,7 @@ export const updateBannerController = async (req, res) => {
     }
 
     oldImageUrl = existing.imageUrl;
+    oldMobileImageUrl = existing.mobileImageUrl;
 
     if (req.files?.imageUrl?.[0]) {
       uploadedImageUrl = await uploadFileToSupabase(
@@ -125,11 +144,26 @@ export const updateBannerController = async (req, res) => {
       );
     }
 
+    if (req.files?.mobileImageUrl?.[0]) {
+      uploadedMobileImageUrl = await uploadFileToSupabase(
+        req.files.mobileImageUrl[0],
+        "banners",
+      );
+    }
+
     const isActive = parseBoolean(req.body.isActive);
 
     const updateData = {
       ...(isActive !== undefined && { isActive }),
+
       ...(uploadedImageUrl && { imageUrl: uploadedImageUrl }),
+      ...(uploadedMobileImageUrl && {
+        mobileImageUrl: uploadedMobileImageUrl,
+      }),
+
+      ...(req.body.redirectLink !== undefined && {
+        redirectLink: req.body.redirectLink,
+      }),
 
       ...(req.body.title !== undefined && { title: req.body.title }),
       ...(req.body.highlight !== undefined && {
@@ -142,8 +176,13 @@ export const updateBannerController = async (req, res) => {
 
     const updated = await updateBanner(id, updateData);
 
+    // delete old files
     if (uploadedImageUrl && oldImageUrl) {
       await deleteFileFromSupabase(oldImageUrl);
+    }
+
+    if (uploadedMobileImageUrl && oldMobileImageUrl) {
+      await deleteFileFromSupabase(oldMobileImageUrl);
     }
 
     res.status(200).json({
@@ -154,6 +193,9 @@ export const updateBannerController = async (req, res) => {
   } catch (error) {
     if (uploadedImageUrl) {
       await deleteFileFromSupabase(uploadedImageUrl);
+    }
+    if (uploadedMobileImageUrl) {
+      await deleteFileFromSupabase(uploadedMobileImageUrl);
     }
 
     res.status(error.status || 500).json({
@@ -172,6 +214,7 @@ export const deleteBannerController = async (req, res) => {
     });
 
     const imageUrl = existing?.imageUrl;
+    const mobileImageUrl = existing?.mobileImageUrl;
 
     await softDeleteBanner(id);
 
@@ -179,6 +222,9 @@ export const deleteBannerController = async (req, res) => {
       await deleteFileFromSupabase(imageUrl);
     }
 
+    if (mobileImageUrl) {
+      await deleteFileFromSupabase(mobileImageUrl);
+    }
     res.status(200).json({
       success: true,
       message: "Banner deleted successfully",

@@ -23,7 +23,10 @@ router.post(
   "/",
   authenticateToken,
   adminAuth,
-  upload.fields([{ name: "imageUrl", maxCount: 1 }]),
+  upload.fields([
+    { name: "imageUrl", maxCount: 1 },
+    { name: "mobileImageUrl", maxCount: 1 },
+  ]),
   createBannerController,
 );
 
@@ -31,7 +34,10 @@ router.put(
   "/:id",
   authenticateToken,
   adminAuth,
-  upload.fields([{ name: "imageUrl", maxCount: 1 }]),
+  upload.fields([
+    { name: "imageUrl", maxCount: 1 },
+    { name: "mobileImageUrl", maxCount: 1 },
+  ]),
   updateBannerController,
 );
 
